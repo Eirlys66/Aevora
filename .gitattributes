@@ -1,0 +1,5 @@
+# 统一行尾，避免「改一行」显示成整篇重写
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

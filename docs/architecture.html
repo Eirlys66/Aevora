@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aevora 日常区记忆库架构</title>
+<style>
+  :root{
+    --ink:#1c1c1e; --ink2:#5a5a63; --ink3:#8a8a93;
+    --line:#e2e1dc; --bg:#fdfcfa; --card:#ffffff; --soft:#f6f5f1;
+    --t1:#534AB7; --t2:#993556; --t3:#0F6E56; --t4:#185FA5; --t0:#5F5E5A;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:44px 28px 72px;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1020px;margin:0 auto}
+  h1{font-size:23px;font-weight:600;margin:0 0 8px;letter-spacing:-.2px}
+  .sub{color:var(--ink2);font-size:13.5px;margin-bottom:6px}
+  .meta{color:var(--ink3);font-size:12.5px;font-family:ui-monospace,Consolas,monospace;margin-bottom:34px}
+  h2{font-size:16.5px;font-weight:600;margin:44px 0 6px;padding-top:8px}
+  h2 .n{color:var(--ink3);font-weight:500;margin-right:8px}
+  .lead{color:var(--ink2);font-size:14px;margin:0 0 20px}
+
+  .chain{display:grid;grid-template-columns:repeat(5,1fr);gap:18px;align-items:stretch;margin:22px 0 8px}
+  .step{position:relative}
+  .step .box{background:var(--card);border:1px solid var(--line);border-radius:10px;
+             padding:14px 13px 13px;height:100%;border-top:3px solid transparent}
+  .step .box b{display:block;font-size:14px;font-weight:600;margin-bottom:2px}
+  .step .box .tag{display:block;font-size:11.5px;color:var(--ink3);font-family:ui-monospace,monospace;margin-bottom:8px}
+  .step .box p{margin:0 0 6px;font-size:12.5px;line-height:1.55;color:var(--ink2)}
+  .step .box p:last-child{margin-bottom:0}
+  .step .box em{font-style:normal;color:var(--ink);background:#f1f0ea;padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .step:not(:last-child)::after{content:"→";position:absolute;right:-15px;top:50%;
+             transform:translateY(-50%);color:#b4b2a9;font-size:14px;line-height:1;z-index:2}
+  .s0 .box{border-top-color:var(--t0)} .s0 b{color:var(--t0)}
+  .s1 .box{border-top-color:var(--t1)} .s1 b{color:var(--t1)}
+  .s2 .box{border-top-color:var(--t2)} .s2 b{color:var(--t2)}
+  .s3 .box{border-top-color:var(--t3)} .s3 b{color:var(--t3)}
+  .s4 .box{border-top-color:var(--t4)} .s4 b{color:var(--t4)}
+
+  .flow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin:16px 0}
+  .row{display:flex;align-items:flex-start;gap:14px;padding:11px 0;border-bottom:1px dashed var(--line)}
+  .row:last-child{border-bottom:none;padding-bottom:0}
+  .row:first-child{padding-top:0}
+  .num{flex:0 0 22px;height:22px;border-radius:50%;background:var(--soft);color:var(--ink2);
+       font-size:11.5px;display:flex;align-items:center;justify-content:center;font-weight:600;margin-top:2px}
+  .row .body{flex:1;font-size:13.5px;line-height:1.65}
+  .row .body b{font-weight:600}
+  .row .body code{font-family:ui-monospace,Consolas,monospace;font-size:12px;
+       background:var(--soft);padding:1.5px 5px;border-radius:4px;color:var(--ink2)}
+  .branch{background:var(--soft);border-radius:8px;padding:12px 14px;margin:8px 0 0;font-size:12.8px;color:var(--ink2)}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0 4px;font-size:13px}
+  th{text-align:left;font-weight:600;color:var(--ink);background:var(--soft);
+     padding:9px 11px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap}
+  td{padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+  td b{color:var(--ink);font-weight:600}
+  td code{font-family:ui-monospace,Consolas,monospace;font-size:11.8px;color:var(--ink)}
+  tr:last-child td{border-bottom:none}
+  .num-col{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;color:var(--ink);white-space:nowrap}
+
+  .note{border-left:2px solid var(--t1);background:#f7f6fd;padding:14px 18px;border-radius:0 8px 8px 0;margin:18px 0;font-size:13.5px}
+  .note b{font-weight:600}
+  .warn{border-left-color:#BA7517;background:#fdf8ee}
+  .ok{border-left-color:var(--t3);background:#f2f9f6}
+  .foot{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:12px}
+  @media (max-width:820px){
+    .chain{grid-template-columns:1fr;gap:26px}
+    .step:not(:last-child)::after{content:"↓";right:auto;left:50%;top:auto;bottom:-22px;
+      transform:translateX(-50%)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Aevora 日常区 · 记忆库架构</h1>
+<div class="sub">只读检查结果：四层记忆（T1–T4）+ 一层不可变原文（T0）</div>
+<div class="meta">backend · schema 表 43 张，日常区 40 张 · 2026-10-26</div>
+
+<h2><span class="n">一</span>写入链：四层各自怎么长出来</h2>
+<p class="lead">不是一条链走到底，而是每一层有各自的触发方式和来源。越往下越抽象、条数越少、越接近“我是谁”。</p>
+
+<div class="chain">
+  <div class="step s0"><div class="box">
+    <b>T0 原文</b><span class="tag">source_messages / messages</span>
+    <p>用户侧与助手侧原话，不可变。</p>
+    <p>所有上层最终都能回溯到这里。</p>
+  </div></div>
+  <div class="step s1"><div class="box">
+    <b>T1 长期记忆</b><span class="tag">router → curator → writer</span>
+    <p>显式接口触发，一次 ≤30 轮，租约 180 秒。</p>
+    <p>Markdown + sha256 落盘，版本化不可删。</p>
+    <p>按 <em>topic</em> <em>user_profile</em> <em>chat_desire</em> 三类分轨。</p>
+  </div></div>
+  <div class="step s2"><div class="box">
+    <b>T2 心语卡</b><span class="tag">save_emotion_card</span>
+    <p>对话中由主模型主动写。</p>
+    <p>引用原文必须<em>本轮已读</em>。</p>
+    <p>一张卡最多挂 1 条 T1。</p>
+  </div></div>
+  <div class="step s3"><div class="box">
+    <b>T3 自我觉察</b><span class="tag">weekly_self_awareness</span>
+    <p>每周日定时跑，最多 3 次尝试。</p>
+    <p>必须 ≥2 条 T2 来源，数据库触发器强制。</p>
+  </div></div>
+  <div class="step s4"><div class="box">
+    <b>T4 核心记忆</b><span class="tag">core_memory</span>
+    <p>对话中保存 + 每轮前复核。</p>
+    <p>三态：常驻 / 待复核 / 非常驻。</p>
+    <p>只链 T3，不直接链 T1。</p>
+  </div></div>
+</div>
+
+<div class="flow">
+  <div class="row"><div class="num">1</div><div class="body">
+    <b>T1 是三段管线，不是一次总结。</b>批次先<code>冻结</code>（同一 <code>source_digest</code> 唯一，重跑不重复），再依次走 router → curator → writer，每阶段结果都落在批次表里，中途崩了可以从断点续。产出直接就是「一条记忆 = 一次事件」，不是一轮对话一条。
+  </div></div>
+  <div class="row"><div class="num">2</div><div class="body">
+    <b>T2 不接受“凭印象写”。</b>写卡时若带 <code>memory_sources</code>，其中每个原文编号必须出现在本轮的读取授权集合里，否则直接拒绝：<code>心语卡片只能引用本轮已经读取的原始消息</code>。想写卡，得先真的把原文读出来。
+  </div></div>
+  <div class="row"><div class="num">3</div><div class="body">
+    <b>T2 允许先建后挂。</b>不带 <code>memory_sources</code> 时可以建一张“未挂靠”卡，来源指向当前用户原话；之后由 <code>attach_emotion_card</code> 挂到 T1 上，链接字段记 <code>live_dialogue</code>（对话中挂）或 <code>daily_archive</code>（归档时挂）。
+  </div></div>
+  <div class="row"><div class="num">4</div><div class="body">
+    <b>T3 的门槛写在数据库里，不写在提示词里。</b>把一条 T3 置为 <code>current</code> 时，触发器会数它的 T2 来源，少于 2 条直接 <code>RAISE(ABORT)</code>。也就是说“只凭一件事就总结出自我认知”在结构上不可能。
+  </div></div>
+  <div class="row"><div class="num">5</div><div class="body">
+    <b>T4 是唯一会“常驻”的一层。</b><code>residency_state</code> 三态决定它进不进每轮上下文；<code>review_if_due</code> 在每轮对话开始前用 <code>assistant_primary</code> 角色评估一次，决定谁升为常驻、谁退回待复核。
+  </div></div>
+</div>
+
+<h2><span class="n">二</span>读取链：一轮对话实际注入了什么</h2>
+<p class="lead">常驻层和召回层是<strong>两个独立预算</strong>，不抢同一个池子。这是这套设计里最值钱的一处。</p>
+
+<div class="flow">
+  <div class="row"><div class="num">A</div><div class="body">
+    <b>先装常驻 T4</b>（无条件，不看语义相关度）<br>
+    <code>residency_state='resident'</code> 的全部条目，上限 <code>3 条</code> / <code>1800 字符</code> / 单条 <code>600 字符</code>，按创建时间排序，超了就截断单条正文，装不下就停。
+    <div class="branch">预算独立，注释写得很明确：<code>no emotion-card reads or T1/T3 budget use</code>。常驻层不吃召回的额度，召回也不会把常驻层挤掉。</div>
+  </div></div>
+  <div class="row"><div class="num">B</div><div class="body">
+    <b>再算自动召回</b><br>
+    候选池 = T1 活跃 + T3 活跃 + T4 非常驻，最多 <code>20 条</code> → 路由先判“这一轮要不要召回”（不用就别花后面那几步）→ 打分 <code>0.7 × 向量 + 0.3 × 词法</code> → rerank → 卡阈值 <code>0.65</code> → 只取前 <code>2 条</code>。
+    <div class="branch">同一条记忆有 <code>24 小时冷却</code>，同一轮有 <code>15 分钟预留</code>。这两道是防“同一件事连着几天被反复注入”，也是为什么召回条数敢定得这么低。</div>
+  </div></div>
+  <div class="row"><div class="num">C</div><div class="body">
+    <b>拼进 system，顺序固定</b><br>
+    角色设定 → 用户资料 → 对话规则 → 常驻 T4 + 召回结果。拼完进工具循环：最多 <code>4 轮</code> / <code>8 次工具调用</code>，共 <code>19 个</code>记忆工具。
+  </div></div>
+  <div class="row"><div class="num">D</div><div class="body">
+    <b>整条召回链是可失败的</b><br>
+    <code>prepare()</code> 外面包着 try/except，任何一步出错都只记事件、返回空上下文，聊天照常。注释：<code>任意召回故障不阻断聊天</code>。
+  </div></div>
+</div>
+
+<h2><span class="n">三</span>四层对照</h2>
+
+<table>
+  <thead><tr>
+    <th>层</th><th>回答什么</th><th>写入者</th><th>触发方式</th><th>主要表</th>
+  </tr></thead>
+  <tbody>
+    <tr><td><b>T1</b></td><td>发生过什么</td><td>记忆处理模型</td><td>显式接口，手动/外部调度</td><td><code>daily_memories</code> + <code>_revisions</code> + <code>_sources</code> + <code>_tracks</code></td></tr>
+    <tr><td><b>T2</b></td><td>那一刻心里什么样</td><td><b>主对话模型</b></td><td>对话中模型主动调工具</td><td><code>daily_emotion_cards</code> + <code>_revisions</code> + <code>_sources</code> + <code>_memory_emotion_cards</code></td></tr>
+    <tr><td><b>T3</b></td><td>我因此变成什么样的人</td><td>周度任务</td><td>每周日定时</td><td><code>daily_self_awareness</code> + <code>_revisions</code> + <code>_t2_sources</code> + <code>_weekly_*</code></td></tr>
+    <tr><td><b>T4</b></td><td>我是谁（稳定内核）</td><td>主对话模型</td><td>对话中保存 + 每轮前复核</td><td><code>daily_core_memories</code> + <code>_revisions</code> + <code>_t3_links</code> + <code>_residency_state</code></td></tr>
+  </tbody>
+</table>
+
+<h2><span class="n">四</span>关键数字</h2>
+
+<table>
+  <thead><tr><th>参数</th><th>值</th><th>管什么</th></tr></thead>
+  <tbody>
+    <tr><td>候选池上限</td><td class="num-col">20 条</td><td>进入打分的总条目，超出先粗排</td></tr>
+    <tr><td>单轮注入上限</td><td class="num-col">2 条</td><td>召回层最终进 prompt 的条数</td></tr>
+    <tr><td>相关度阈值</td><td class="num-col">0.65</td><td>低于此分一律不注入</td></tr>
+    <tr><td>冷却 / 预留</td><td class="num-col">24h / 15min</td><td>同一条记忆的重复注入间隔</td></tr>
+    <tr><td>召回上下文上限</td><td class="num-col">7000 字符</td><td>召回文本总长</td></tr>
+    <tr><td>常驻 T4</td><td class="num-col">3 条 / 1800 字 / 单条 600 字</td><td>常驻层独立预算</td></tr>
+    <tr><td>T1 批次</td><td class="num-col">30 轮 / 30000 字符 / 租约 180s</td><td>一次提炼的取数范围</td></tr>
+    <tr><td>T3 周度</td><td class="num-col">≤3 次尝试 / 租约 10 分钟</td><td>失败重试上限</td></tr>
+    <tr><td>工具循环</td><td class="num-col">4 轮 / 8 次调用</td><td>单轮对话里模型能调几次工具</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="n">五</span>三个值得单独知道的约束</h2>
+
+<div class="note ok">
+<b>一、情绪卡不是“只能当场写”，是“引用必须有据”。</b>
+<code>daily_emotion_card_revisions.writer_role</code> 上那条 <code>CHECK (writer_role = 'assistant_primary')</code> 只圈定这一列能取哪些字面值，<strong>并不校验调用者是谁</strong>——T1 的 <code>writer_role</code> 锁成 <code>'memory_processing'</code> 是同一个性质：<b>都是标签，不是权限</b>。真正的闸门在工具层——<code>read_grants</code> 要求卡里每条 <code>source_refs</code> 都落在“本轮读过的消息”集合里，否则报“心语卡片只能引用本轮已经读取的原始消息”。它锁的是<strong>引用能不能对上原文</strong>，不是<strong>写的时刻</strong>。
+<br><br>而且归档侧的路本来就留着：<code>daily_memory_emotion_cards.link_source</code> 的 CHECK 允许 <code>'live_dialogue'</code> 与 <code>'daily_archive'</code>；<code>attach_emotion_card()</code> 的 <code>link_source</code> 默认值直接就是 <code>'daily_archive'</code>，还配了一条 REST 入口 <code>POST …/memories/{memory_id}/emotion-cards/{card_id}</code>；另有一张“未挂靠卡片”待办队列，超过 24 小时标 <code>overdue</code>。也就是说“先留卡、事后挂回某条记忆”这条链，今天的代码就是通的。
+<br><br>缺的是另一半：<strong>创建</strong>卡片的 <code>create_emotion_card()</code> 没有 REST 入口，只有对话工具那一条路（写死 <code>link_source="live_dialogue"</code>），而服务层本身接受 <code>daily_archive</code>。所以想让凌晨那批模型写卡，<strong>不用改 schema，是给它接一个入口</strong>、调用时传 <code>daily_archive</code>。唯一真要动 schema 的是标签诚实度——想让这批卡在库里明确标成“离线补写”，得放宽 <code>writer_role</code> 的枚举；那是元数据，不影响能不能写。
+</div>
+
+<div class="note">
+<b>二、T4 到 T1 没有直接连线。</b>
+T4 只链 T3（<code>daily_core_memory_t3_links</code>），T3 又只用 T2 的 <code>memory_id</code> 做锚，解析时才去读当前 T1 版本和最新有效卡。所以任何一次回溯都是：T4 → T3 → T2 → T1 → T0，四跳。好处是任何一层改版都不会断链，代价是想查“这条核心记忆到底基于哪句原话”要跳四次。
+</div>
+
+<div class="note warn">
+<b>三、召回只取 2 条，而且是四层共抢。</b>
+T1、T3、非常驻 T4 都在同一个候选池里，按分数排，不按层级分配名额。也就是说一条被召回的核心记忆，可能挤掉一条更贴题的 T1。这在“层数少、条数少”的时候没问题，但 T4 攒到十几条之后需要留意——它可能会长期占住那两个名额。
+</div>
+
+<div class="foot">
+只读检查：未修改任何文件，未启动服务，未读取库内数据内容。所有结论来自该项目 backend 的 schema 与 services 代码。
+</div>
+
+</div>
+</body>
+</html>

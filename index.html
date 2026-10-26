@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aevora · 设计文档</title>
+<style>
+  :root { --fg:#1a1a1a; --dim:#6b6b6b; --line:#e3e3e3; --bg:#fbfbfa; --accent:#8a6d3b; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:48px 20px 80px; background:var(--bg); color:var(--fg);
+         font:16px/1.75 -apple-system, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  main { max-width:720px; margin:0 auto; }
+  h1 { font-size:30px; margin:0 0 6px; letter-spacing:.5px; }
+  .lede { color:var(--dim); margin:0 0 28px; font-size:15px; }
+  h2 { font-size:15px; letter-spacing:1px; color:var(--dim); font-weight:600;
+       margin:36px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  ul { list-style:none; padding:0; margin:0; }
+  li { padding:9px 0; border-bottom:1px dashed var(--line); font-size:15px; }
+  li:last-child { border-bottom:none; }
+  li span { color:var(--dim); font-size:13.5px; display:block; }
+  .big { display:inline-block; margin:4px 0 0; padding:11px 20px; border:1px solid var(--accent);
+         border-radius:3px; font-size:15px; }
+  footer { margin-top:44px; padding-top:16px; border-top:1px solid var(--line);
+           color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>Aevora</h1>
+  <p class="lede">一个人的自用项目的设计文档。公开是为了分享和自留备份，不是发行版。</p>
+
+  <a class="big" href="docs/architecture.html">看架构图 →</a>
+
+  <h2>文档</h2>
+  <ul>
+    <li><a href="docs/01-骨架说明.md">01 · 平台说明</a><span>进程模型、模块划分</span></li>
+    <li><a href="docs/02-数据模型.md">02 · 数据模型</a><span>表结构与不变量</span></li>
+    <li><a href="docs/PROVENANCE.md">PROVENANCE</a><span>上游参考与代码同源度审计</span></li>
+  </ul>
+
+  <h2>先读这个</h2>
+  <ul>
+    <li><a href="NOTICE.md">NOTICE</a><span>上游许可证与接触情况，含一份 AGPL 的说明</span></li>
+    <li><a href="README.md">README</a><span>范围、声明、我打算怎么用这个仓库</span></li>
+  </ul>
+
+  <footer>
+    自用分享 · 不承诺维护 · AS IS · MIT<br>
+    代码尚未公开，等稳定后以快照形式加入。
+  </footer>
+
+</main>
+</body>
+</html>
