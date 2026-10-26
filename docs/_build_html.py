@@ -92,7 +92,10 @@ def convert(src, dst, title):
     md = markdown.Markdown(extensions=["extra", "sane_lists", "toc"],
                            extension_configs={"toc": {"permalink": False, "toc_depth": "2-3"}})
     body = md.convert(raw)
+    # markdown 的 toc 自带 <div class="toc"> 外壳，模板已有同名容器，去掉避免双层缩进
     toc = md.toc or ""
+    toc = re.sub(r'^\s*<div class="toc">\s*', "", toc)
+    toc = re.sub(r"\s*</div>\s*$", "", toc)
     if not toc.strip():
         toc = '<p style="margin:0;color:#6b6b6b">（本页无小节）</p>'
     out = TPL.format(title=html.escape(title), body=body, toc=toc, md_name=src)
