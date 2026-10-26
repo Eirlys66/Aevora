@@ -4,6 +4,13 @@
 
 当前仓库只有**设计文档与架构图**。代码还没开源——它本身也还没写完，等稳定了会以快照形式陆续放进来。
 
+## 在线看
+
+- **架构图（推荐从这里开始）**：https://eirlys66.github.io/Aevora/docs/architecture.html
+- 站点首页：https://eirlys66.github.io/Aevora/
+
+> 在 GitHub 仓库里直接点 `docs/architecture.html`，看到的是 HTML 源码而不是渲染后的图——这是 GitHub 的行为，不是文件有问题。要看图请用上面第一个链接。
+
 ---
 
 ## 这是什么
