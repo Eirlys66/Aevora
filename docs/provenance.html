@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>来源说明（Provenance） · Aevora</title>
+<style>
+  :root { --fg:#1a1a1a; --dim:#6b6b6b; --line:#e3e3e3; --bg:#fbfbfa;
+           --accent:#8a6d3b; --codebg:#f3f1ec; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 20px 90px; background:var(--bg); color:var(--fg);
+          font:16px/1.78 -apple-system,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; }
+  main { max-width:760px; margin:0 auto; }
+  .top { font-size:13.5px; color:var(--dim); margin-bottom:26px; }
+  .top a { color:var(--accent); text-decoration:none; }
+  .top a:hover { text-decoration:underline; }
+  .top span { margin:0 8px; color:#c9c5bd; }
+  h1 { font-size:27px; margin:0 0 22px; letter-spacing:.4px; line-height:1.35; }
+  h2 { font-size:18px; margin:38px 0 12px; padding-bottom:7px; border-bottom:1px solid var(--line); }
+  h3 { font-size:15.5px; margin:26px 0 8px; color:#333; }
+  p { margin:12px 0; }
+  a { color:var(--accent); }
+  strong { font-weight:600; }
+  hr { border:none; border-top:1px solid var(--line); margin:34px 0; }
+  ul, ol { padding-left:22px; margin:12px 0; }
+  li { margin:5px 0; }
+  code { background:var(--codebg); padding:1px 5px; border-radius:3px;
+          font:13.5px/1.5 "SFMono-Regular",Consolas,"Liberation Mono",monospace;
+          color:#5a4a2f; word-break:break-word; }
+  pre { background:var(--codebg); padding:14px 16px; border-radius:4px; overflow-x:auto;
+         border:1px solid #e8e5dd; }
+  pre code { background:none; padding:0; color:#2c2c2c; font-size:13px; }
+  blockquote { margin:16px 0; padding:2px 16px; border-left:3px solid var(--accent);
+                color:var(--dim); background:#f7f5f0; }
+  table { border-collapse:collapse; width:100%; margin:18px 0; font-size:14px;
+           background:#fff; display:block; overflow-x:auto; }
+  th, td { border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top; }
+  th { background:#f4f2ed; font-weight:600; white-space:nowrap; }
+  .toc { border:1px solid var(--line); background:#fff; padding:14px 20px 16px;
+          margin:0 0 34px; border-radius:4px; }
+  .toc-h { font-size:12.5px; letter-spacing:1.2px; color:var(--dim); font-weight:600;
+            margin:0 0 8px; text-transform:uppercase; }
+  .toc ul { list-style:none; padding:0; margin:0; }
+  .toc ul ul { display:none; }
+  .toc li { margin:6px 0; font-size:14.5px; }
+  .toc a { text-decoration:none; }
+  .toc a:hover { text-decoration:underline; }
+  footer { margin-top:56px; padding-top:16px; border-top:1px solid var(--line);
+            color:var(--dim); font-size:13px; }
+  footer a { text-decoration:none; }
+</style>
+</head>
+<body>
+<main>
+<div class="top"><a href="../index.html">← Aevora</a><span>·</span><a href="architecture.html">架构图</a><span>·</span><a href="PROVENANCE.md">本文 Markdown 原文</a></div>
+
+<h1>来源说明（Provenance）</h1>
+
+<div class="toc">
+  <p class="toc-h">目录</p>
+  <div class="toc">
+<ul>
+<li><a href="#_1">一、方法</a></li>
+<li><a href="#_2">二、上游项目与许可证</a></li>
+<li><a href="#_3">三、结果</a></li>
+<li><a href="#_4">四、结论</a></li>
+<li><a href="#_5">五、方法局限</a></li>
+<li><a href="#_6">六、参考方式与接触情况</a></li>
+<li><a href="#ai">七、关于 AI 生成代码</a></li>
+</ul>
+</div>
+
+</div>
+
+<p>本仓库代码主要由 AI 助手生成，作者提出设计意图与需求。设计与实现<strong>参考了若干公开项目的思路</strong>。</p>
+<p>这份文件记录一次针对「本仓库是否含有上游代码片段」的技术审计，方法、数据与结论都在下面，供任何审阅者复核。</p>
+<blockquote>
+<p><strong>适用范围</strong>：审计对象是随后会加入本仓库的代码库。此刻仓库里只有设计文档，还没有代码——所以这份记录是<strong>提前</strong>做的，等代码进来时它就是基线，不需要从头再补。</p>
+</blockquote>
+<p>审计日期：2026-10-26</p>
+<hr />
+<h2 id="_1">一、方法</h2>
+<p>把本仓库全部 <code>.py</code> / <code>.ts</code> / <code>.tsx</code> 源码，与下列上游仓库的全部源码做<strong>token 级 6-gram 片段比对</strong>。</p>
+<ul>
+<li>相似度指标：<code>containment = |交集| / min(|A|, |B|)</code>，按<strong>较短文件</strong>计算——比 Jaccard 更适合发现「小文件被整体搬进大文件」。</li>
+<li>过滤：只纳入 ≥300 token 的文件；单文件上限 400 KB；跳过 <code>node_modules</code>、<code>dist</code>、<code>assets</code> 等目录；剔除纯注释行。</li>
+<li>对同源度最高的若干对，额外计算<strong>最长连续重合 token 段</strong>——这是区分「语言惯用写法」与「实质复制」的关键：抄代码会出现 200+ token 的连续块，巧合只会有十几个 token。</li>
+</ul>
+<h2 id="_2">二、上游项目与许可证</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>地址</th>
+<th>许可证</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Serein</td>
+<td>github.com/Yinglianchun/Serein</td>
+<td>MIT © 2026 ChiYouyu</td>
+</tr>
+<tr>
+<td>Ombre Brain</td>
+<td>github.com/P0luz/Ombre-Brain</td>
+<td>MIT © 2026 P0lar1zzZ</td>
+</tr>
+<tr>
+<td>AionsHome</td>
+<td>github.com/death34018-hue/AionsHome</td>
+<td>MIT © 2026 death34018-hue</td>
+</tr>
+<tr>
+<td>心潮念</td>
+<td>github.com/tianyupaipai-cmd/xinchao-nian</td>
+<td>顶层 AGPL-3.0；<code>xinchao/</code> 与 <code>bridge/</code> 为 MIT；<code>ombre-brain/</code> 为 MIT ＋ 二改者附加的非商业约束</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">三、结果</h2>
+<table>
+<thead>
+<tr>
+<th>上游</th>
+<th>最高同源度</th>
+<th>超过 0.15 的配对数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Serein</td>
+<td>0.211</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Ombre Brain</td>
+<td>0.126</td>
+<td>0</td>
+</tr>
+<tr>
+<td>AionsHome</td>
+<td>0.109</td>
+<td>0</td>
+</tr>
+<tr>
+<td>心潮念</td>
+<td>0.104</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>同源度最高的三对，最长连续重合段及内容如下：</p>
+<table>
+<thead>
+<tr>
+<th>本仓库文件</th>
+<th>上游文件</th>
+<th>最长连续重合</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>frontend/src/components/AccessGate.tsx</td>
+<td>Serein web/src/pages/BasementPage.jsx</td>
+<td>16 token</td>
+<td><code>const [error, setError] = useState("")</code></td>
+</tr>
+<tr>
+<td>backend/app/services/daily_memories.py</td>
+<td>Serein src/serein/adapters/bridge.py</td>
+<td>26 token</td>
+<td><code>"role": row["role"], "created_at": row["created_at"]</code></td>
+</tr>
+<tr>
+<td>backend/app/services/daily_self_awareness.py</td>
+<td>Serein src/serein/compat/germany/narrative_writer_sources.py</td>
+<td>20 token</td>
+<td><code>-&gt; dict[str, Any]:</code> / <code>.encode("utf-8")).hexdigest()</code></td>
+</tr>
+</tbody>
+</table>
+<p>三段均为语言惯用写法，不构成实质复制。</p>
+<h2 id="_4">四、结论</h2>
+<p><strong>在「接触成立」的前提下（见第六节），没有发现上游代码被复制进本仓库的证据。</strong></p>
+<ul>
+<li>文本层面：最高同源度 0.211，最长连续重合 26 个 token，且内容为语言惯用写法。</li>
+<li>结构层面：与四个上游的表名无任何领域性重合（仅 <code>events</code> / <code>jobs</code> / <code>messages</code> / <code>tasks</code> 这类通用词）；共享标识符全部为 FastAPI / Pydantic / SQLite 框架词汇；记忆模型分属两套不同范式——上游为「桶管理＋衰减＋投影」，本仓库为「不可变版本＋来源引用＋事件流」。</li>
+</ul>
+<p>这句话不等于「证明不存在」。本方法有明确盲区，见下节。任何据此作出的判断都应当与盲区一起阅读。</p>
+<h2 id="_5">五、方法局限</h2>
+<ol>
+<li><strong>识别不了重写</strong>：把函数改写一遍实现同样算法，相似度会很低。本方法只能排除「文本相似」，不能排除「逻辑相似」。</li>
+<li><strong>抓不到短片段</strong>：不足 300 token 的文件不纳入比对。</li>
+<li><strong>不评估结构相似</strong>：接口顺序、模块划分、流程编排这一层的相似（SSO）属于法律判断，不是文本比对能回答的。</li>
+<li><strong>只比对上述四个上游</strong>，未覆盖其他可能存在影响的来源。</li>
+</ol>
+<h2 id="_6">六、参考方式与接触情况</h2>
+<p>本项目在设计与实现阶段，作者明确指示 AI 助手<strong>参考上述项目的实现方式</strong>，但效果须达到作者自己描述的目标。其中部分项目的源码副本存在于同一台开发服务器上。</p>
+<p><strong>因此本说明不声称「未接触过上游代码」。</strong> 接触是成立的——这是一个「看过参考实现、按自己的设计重写」的过程，不是干净房间（clean room）。</p>
+<p>把这一点写明的理由：一份基于「我从没看过」的说明，一旦被证明看过就整体失效；而一份承认看过、并用可复核数据说明「没有复制表达」的说明，反而更稳。第三、五节的数据正是在这个前提下才有意义。</p>
+<h2 id="ai">七、关于 AI 生成代码</h2>
+<p>本仓库代码由 AI 助手按作者的设计意图生成。作者提供需求、效果描述与判断标准，并对是否采纳参考实现中的具体做法作出取舍。</p>
+<p>若日后发现某段代码与上游实质相同，将按对应上游的许可证要求处理：MIT 部分补充版权与许可声明；涉及 AGPL-3.0 或非商业附加约束的部分，重写或移除。</p>
+
+<footer>
+  自用分享 · 不承诺维护 · AS IS · MIT<br>
+  本页由 <code>PROVENANCE.md</code> 生成，内容以该文件为准。
+</footer>
+</main>
+</body>
+</html>

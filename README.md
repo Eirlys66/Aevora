@@ -7,9 +7,12 @@
 ## 在线看
 
 - **架构图（推荐从这里开始）**：https://eirlys66.github.io/Aevora/docs/architecture.html
+- 01 平台说明：https://eirlys66.github.io/Aevora/docs/01-platform.html
+- 02 数据模型：https://eirlys66.github.io/Aevora/docs/02-data-model.html
+- 来源说明：https://eirlys66.github.io/Aevora/docs/provenance.html
 - 站点首页：https://eirlys66.github.io/Aevora/
 
-> 在 GitHub 仓库里直接点 `docs/architecture.html`，看到的是 HTML 源码而不是渲染后的图——这是 GitHub 的行为，不是文件有问题。要看图请用上面第一个链接。
+> 在 GitHub 仓库里直接点 `.html` 文件，看到的是源码而不是渲染后的页面——这是 GitHub 的行为，不是文件有问题。要看效果请用上面的链接。
 
 ---
 
@@ -56,18 +59,25 @@ Aevora 是一套个人自动化平台，两个领域共用一套底座：
 
 ```
 index.html                       落地页（开 Pages 时直接看这里）
+_build_html.py                   docs 下 md → html 的生成脚本（排版统一用）
 docs/
   architecture.html              日常区记忆库架构图（浏览器直接打开）
-  01-骨架说明.md                  进程模型、模块划分
-  02-数据模型.md                  表结构与不变量
-  PROVENANCE.md                  上游参考与代码同源度审计
+  01-platform.html               01 平台说明（排好版的页面）
+  02-data-model.html             02 数据模型（排好版的页面）
+  provenance.html                来源说明与同源度审计（排好版的页面）
+  01-骨架说明.md                  上面三页的源文件
+  02-数据模型.md
+  PROVENANCE.md
 ```
+
+`docs/*.html` 是 `docs/*.md` 生成出来的，改文档请改 `.md`，然后跑
+`python3 docs/_build_html.py`（需要 `pip install markdown`）重新生成，别直接改 HTML。
 
 文档只放骨架与数据模型两份——足够看清这套系统的形状，剩下的部分等代码。
 
 ## 上游参考
 
-设计与实现参考了几个公开项目的思路，许可证与审计记录见 [`NOTICE.md`](NOTICE.md) 和 [`docs/PROVENANCE.md`](docs/PROVENANCE.md)。其中有一份 AGPL-3.0 的上游，只取了概念层，未采用其代码——这件事在 NOTICE 里写清楚了，不回避。
+设计与实现参考了几个公开项目的思路，许可证与审计记录见 [`NOTICE.md`](NOTICE.md) 和 [`docs/provenance.html`](docs/provenance.html)（源文件 `docs/PROVENANCE.md`）。其中有一份 AGPL-3.0 的上游，只取了概念层，未采用其代码——这件事在 NOTICE 里写清楚了，不回避。
 
 ## 许可
 

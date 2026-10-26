@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · 平台说明 · Aevora</title>
+<style>
+  :root { --fg:#1a1a1a; --dim:#6b6b6b; --line:#e3e3e3; --bg:#fbfbfa;
+           --accent:#8a6d3b; --codebg:#f3f1ec; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 20px 90px; background:var(--bg); color:var(--fg);
+          font:16px/1.78 -apple-system,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; }
+  main { max-width:760px; margin:0 auto; }
+  .top { font-size:13.5px; color:var(--dim); margin-bottom:26px; }
+  .top a { color:var(--accent); text-decoration:none; }
+  .top a:hover { text-decoration:underline; }
+  .top span { margin:0 8px; color:#c9c5bd; }
+  h1 { font-size:27px; margin:0 0 22px; letter-spacing:.4px; line-height:1.35; }
+  h2 { font-size:18px; margin:38px 0 12px; padding-bottom:7px; border-bottom:1px solid var(--line); }
+  h3 { font-size:15.5px; margin:26px 0 8px; color:#333; }
+  p { margin:12px 0; }
+  a { color:var(--accent); }
+  strong { font-weight:600; }
+  hr { border:none; border-top:1px solid var(--line); margin:34px 0; }
+  ul, ol { padding-left:22px; margin:12px 0; }
+  li { margin:5px 0; }
+  code { background:var(--codebg); padding:1px 5px; border-radius:3px;
+          font:13.5px/1.5 "SFMono-Regular",Consolas,"Liberation Mono",monospace;
+          color:#5a4a2f; word-break:break-word; }
+  pre { background:var(--codebg); padding:14px 16px; border-radius:4px; overflow-x:auto;
+         border:1px solid #e8e5dd; }
+  pre code { background:none; padding:0; color:#2c2c2c; font-size:13px; }
+  blockquote { margin:16px 0; padding:2px 16px; border-left:3px solid var(--accent);
+                color:var(--dim); background:#f7f5f0; }
+  table { border-collapse:collapse; width:100%; margin:18px 0; font-size:14px;
+           background:#fff; display:block; overflow-x:auto; }
+  th, td { border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top; }
+  th { background:#f4f2ed; font-weight:600; white-space:nowrap; }
+  .toc { border:1px solid var(--line); background:#fff; padding:14px 20px 16px;
+          margin:0 0 34px; border-radius:4px; }
+  .toc-h { font-size:12.5px; letter-spacing:1.2px; color:var(--dim); font-weight:600;
+            margin:0 0 8px; text-transform:uppercase; }
+  .toc ul { list-style:none; padding:0; margin:0; }
+  .toc ul ul { display:none; }
+  .toc li { margin:6px 0; font-size:14.5px; }
+  .toc a { text-decoration:none; }
+  .toc a:hover { text-decoration:underline; }
+  footer { margin-top:56px; padding-top:16px; border-top:1px solid var(--line);
+            color:var(--dim); font-size:13px; }
+  footer a { text-decoration:none; }
+</style>
+</head>
+<body>
+<main>
+<div class="top"><a href="../index.html">← Aevora</a><span>·</span><a href="architecture.html">架构图</a><span>·</span><a href="01-骨架说明.md">本文 Markdown 原文</a></div>
+
+<h1>01 · 平台说明</h1>
+
+<div class="toc">
+  <p class="toc-h">目录</p>
+  <div class="toc">
+<ul>
+<li><a href="#2026-10-24">日常区增量（2026-10-24）</a></li>
+<li><a href="#_1">进程模型</a></li>
+<li><a href="#_2">数据库是唯一权威</a></li>
+<li><a href="#_3">关键实现选择</a></li>
+<li><a href="#2026-10-22">当前状态（2026-10-22 第二轮）</a></li>
+<li><a href="#2026-10-22_1">验证记录（2026-10-22 第二轮）</a></li>
+</ul>
+</div>
+
+</div>
+
+<h2 id="2026-10-24">日常区增量（2026-10-24）</h2>
+<p>日常区新增 persona、绑定 persona 的 conversation、幂等 turn、独立原始来源消息、助手回复与会话事件。
+聊天首版使用非流式 OpenAI 兼容接口，用户消息先提交，助手只在持久化后返回。模型凭据保存在
+服务端权限受限文件中；可选访问令牌保护跨设备 API 请求。记忆流水线、自动召回、心语卡片、主动工具和删除接口仍未接入。</p>
+<p>该增量尚未执行数据库迁移或自动化验收；新表由 schema v4 在应用启动时增量创建。</p>
+<h2 id="_1">进程模型</h2>
+<p>首版两个进程，共享一个 SQLite 数据库（WAL 模式）：</p>
+<pre><code>浏览器 ── REST + SSE ── API 进程（uvicorn, 127.0.0.1:8081）
+                              │
+                              ├── SQLite WAL：项目/任务/消息/提案/授权/作业/事件/产物元数据
+                              ├── projects/&lt;项目名&gt;/     项目工作目录（将来执行器的读写区）
+                              ├── artifacts/&lt;项目名&gt;/    产物本体（路径由服务端生成）
+                              └──（同一份库）
+                                   Worker 进程
+                                     └── Executor 适配器 → NullExecutor（空实现）
+</code></pre>
+<p>为什么不用容器：目标机上没有 Docker，且首版是单机单所有者低并发，
+原生进程 + 前台脚本足够；等需要独立扩缩容再谈部署形态。</p>
+<h2 id="_2">数据库是唯一权威</h2>
+<ul>
+<li>任务阶段、授权、作业状态、队列位置<strong>全部</strong>在数据库里；</li>
+<li>进程内不保存任何"待执行队列"；</li>
+<li>API 崩溃或 Worker 重启，都不会丢作业、也不会重复执行（幂等键 + 租约）；</li>
+<li>事件与状态写在<strong>同一个事务</strong>里，不会出现"状态变了事件没记"。</li>
+</ul>
+<h2 id="_3">关键实现选择</h2>
+<table>
+<thead>
+<tr>
+<th>选择</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>手写 SQL，不用 ORM</td>
+<td>骨架阶段 SQL 比 ORM 更直观，审计"到底写了什么"更容易</td>
+</tr>
+<tr>
+<td><code>isolation_level=None</code> + 显式 <code>BEGIN IMMEDIATE</code></td>
+<td>事务边界完全可控，避免隐式事务把"读-判断-写"拆开</td>
+</tr>
+<tr>
+<td><code>events.seq</code> 用 <code>AUTOINCREMENT</code></td>
+<td>单调且<strong>不复用</strong>已删除序号，客户端游标补读才成立</td>
+</tr>
+<tr>
+<td>路径校验先 <code>realpath</code> 再 <code>commonpath</code></td>
+<td>只比对字符串会被 <code>..</code> 和符号链接绕过</td>
+</tr>
+<tr>
+<td>每日确认判定在服务端</td>
+<td>前端弹窗只是外壳，权限来源必须是数据库</td>
+</tr>
+<tr>
+<td>每日确认记在<strong>全局</strong> <code>daily_acks</code>（day 主键），不在授权行上</td>
+<td>授权是任务级对象，确认是系统级状态；混在一起会让同一天多个任务各弹一次</td>
+</tr>
+<tr>
+<td>消息角色由服务端写死（工作区公共接口只写 <code>user</code>）</td>
+<td>即使使用 bearer token，客户端也不能伪造 <code>assistant</code> 消息绕过每日确认</td>
+</tr>
+<tr>
+<td>产物路径由服务端生成，客户端只给文件名</td>
+<td>让客户端参与拼路径，等于把目录穿越的入口留在上传接口上</td>
+</tr>
+<tr>
+<td>产物下载强制 <code>attachment</code> + <code>nosniff</code></td>
+<td>产物是同源内容，内联渲染 HTML 就是一个存储型 XSS</td>
+</tr>
+<tr>
+<td>上传上限在流式写入时按<strong>实际字节</strong>判定</td>
+<td>Content-Length 可以撒谎；写满上限就中断，避免被灌满磁盘</td>
+</tr>
+<tr>
+<td>执行器契约用同步迭代器</td>
+<td>首版单 Worker 单线程，同步模型更容易推理崩溃点</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2026-10-22">当前状态（2026-10-22 第二轮）</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>项目 / 任务 / 消息 / 提案 / 授权 / 作业 / 事件</td>
+<td>已实现，有测试</td>
+</tr>
+<tr>
+<td>讨论阶段不可排入执行</td>
+<td>已实现（创建作业的唯一入口是确认提案）</td>
+</tr>
+<tr>
+<td>提案换版即失效旧授权</td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>每日首次确认</td>
+<td>已实现（服务端判定，409 握手；<strong>全局按自然日一次</strong>）</td>
+</tr>
+<tr>
+<td>消息角色限制</td>
+<td>已实现（公共接口只接受 <code>user</code>，<code>assistant</code>/<code>system</code> 仅服务端内部写入）</td>
+</tr>
+<tr>
+<td>SSE 事件流 + 游标补读</td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>独立 Worker + 租约 + 过期回收</td>
+<td>已实现（回收进 <code>needs_verification</code>，不自动重放）</td>
+</tr>
+<tr>
+<td>真实执行器</td>
+<td><strong>未实现</strong>（NullExecutor，作业停在 <code>not_implemented</code>）</td>
+</tr>
+<tr>
+<td>身份认证 / 多用户</td>
+<td>单所有者 bearer token 已加入；多用户身份与角色权限未实现</td>
+</tr>
+<tr>
+<td>产物上传 / 列表 / 详情 / 下载</td>
+<td>已实现（服务端生成路径、文件名白名单、流式限流、sha256 落库）</td>
+</tr>
+<tr>
+<td>执行器产物（<code>job_output</code>）自动登记</td>
+<td><strong>未实现</strong>（<code>job_id</code> 字段已预留，暂无写入方）</td>
+</tr>
+<tr>
+<td>产物在线预览 / 删除 / 版本比对</td>
+<td><strong>未做</strong>（内联渲染有存储型 XSS 风险，删除要配套回收策略）</td>
+</tr>
+<tr>
+<td>部署（systemd / 反代 / TLS）</td>
+<td><strong>未做</strong>，且本轮明确不做</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2026-10-22_1">验证记录（2026-10-22 第二轮）</h2>
+<table>
+<thead>
+<tr>
+<th>验证</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pytest</code>（57 例：路径安全 / 链路 / 每日确认 / 角色约束 / 产物 / 上传上限）</td>
+<td>57 passed</td>
+</tr>
+<tr>
+<td><code>scripts/smoke.sh</code> 端到端（20 步，临时库临时端口）</td>
+<td>全部符合预期</td>
+</tr>
+<tr>
+<td>真实库迁移（历史记录，v2 → v3）</td>
+<td>通过：旧数据逐表计数不变；日常区 v4 尚未启动迁移</td>
+</tr>
+<tr>
+<td><code>scripts/check_migration.py</code>（v1 带数据 → 当前版本）</td>
+<td>通过</td>
+</tr>
+<tr>
+<td>前端 <code>tsc --noEmit &amp;&amp; vite build</code></td>
+<td>通过，dist 约 163 KB JS + 10.8 KB CSS</td>
+</tr>
+<tr>
+<td>上传落盘 sha256 vs 库内记录</td>
+<td>一致</td>
+</tr>
+<tr>
+<td>穿越文件名 <code>../evil.txt</code></td>
+<td>422，产物根外无文件</td>
+</tr>
+<tr>
+<td>4 KiB / 1 KiB 上限</td>
+<td>413，无 <code>.part</code> 残留、无记录</td>
+</tr>
+<tr>
+<td>分块上传（<code>Transfer-Encoding: chunked</code>，无 <code>Content-Length</code>）连发 3 次 8 MiB</td>
+<td>均 413；<code>/tmp</code> 文件数与大小无变化、产物根 0 文件、库 0 记录</td>
+</tr>
+<tr>
+<td>遗留进程</td>
+<td>验证后端口已释放，未常驻</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>首轮记录（2026-10-21）：pytest 30 passed、冒烟 16 步、v1→v2 迁移保留 2 行旧授权。</p>
+</blockquote>
+
+<footer>
+  自用分享 · 不承诺维护 · AS IS · MIT<br>
+  本页由 <code>01-骨架说明.md</code> 生成，内容以该文件为准。
+</footer>
+</main>
+</body>
+</html>

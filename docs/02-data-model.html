@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · 数据模型 · Aevora</title>
+<style>
+  :root { --fg:#1a1a1a; --dim:#6b6b6b; --line:#e3e3e3; --bg:#fbfbfa;
+           --accent:#8a6d3b; --codebg:#f3f1ec; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 20px 90px; background:var(--bg); color:var(--fg);
+          font:16px/1.78 -apple-system,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; }
+  main { max-width:760px; margin:0 auto; }
+  .top { font-size:13.5px; color:var(--dim); margin-bottom:26px; }
+  .top a { color:var(--accent); text-decoration:none; }
+  .top a:hover { text-decoration:underline; }
+  .top span { margin:0 8px; color:#c9c5bd; }
+  h1 { font-size:27px; margin:0 0 22px; letter-spacing:.4px; line-height:1.35; }
+  h2 { font-size:18px; margin:38px 0 12px; padding-bottom:7px; border-bottom:1px solid var(--line); }
+  h3 { font-size:15.5px; margin:26px 0 8px; color:#333; }
+  p { margin:12px 0; }
+  a { color:var(--accent); }
+  strong { font-weight:600; }
+  hr { border:none; border-top:1px solid var(--line); margin:34px 0; }
+  ul, ol { padding-left:22px; margin:12px 0; }
+  li { margin:5px 0; }
+  code { background:var(--codebg); padding:1px 5px; border-radius:3px;
+          font:13.5px/1.5 "SFMono-Regular",Consolas,"Liberation Mono",monospace;
+          color:#5a4a2f; word-break:break-word; }
+  pre { background:var(--codebg); padding:14px 16px; border-radius:4px; overflow-x:auto;
+         border:1px solid #e8e5dd; }
+  pre code { background:none; padding:0; color:#2c2c2c; font-size:13px; }
+  blockquote { margin:16px 0; padding:2px 16px; border-left:3px solid var(--accent);
+                color:var(--dim); background:#f7f5f0; }
+  table { border-collapse:collapse; width:100%; margin:18px 0; font-size:14px;
+           background:#fff; display:block; overflow-x:auto; }
+  th, td { border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top; }
+  th { background:#f4f2ed; font-weight:600; white-space:nowrap; }
+  .toc { border:1px solid var(--line); background:#fff; padding:14px 20px 16px;
+          margin:0 0 34px; border-radius:4px; }
+  .toc-h { font-size:12.5px; letter-spacing:1.2px; color:var(--dim); font-weight:600;
+            margin:0 0 8px; text-transform:uppercase; }
+  .toc ul { list-style:none; padding:0; margin:0; }
+  .toc ul ul { display:none; }
+  .toc li { margin:6px 0; font-size:14.5px; }
+  .toc a { text-decoration:none; }
+  .toc a:hover { text-decoration:underline; }
+  footer { margin-top:56px; padding-top:16px; border-top:1px solid var(--line);
+            color:var(--dim); font-size:13px; }
+  footer a { text-decoration:none; }
+</style>
+</head>
+<body>
+<main>
+<div class="top"><a href="../index.html">← Aevora</a><span>·</span><a href="architecture.html">架构图</a><span>·</span><a href="02-数据模型.md">本文 Markdown 原文</a></div>
+
+<h1>02 · 数据模型</h1>
+
+<div class="toc">
+  <p class="toc-h">目录</p>
+  <div class="toc">
+<ul>
+<li><a href="#meta">meta</a></li>
+<li><a href="#projects">projects</a></li>
+<li><a href="#tasks">tasks</a></li>
+<li><a href="#messages">messages</a></li>
+<li><a href="#proposals">proposals</a></li>
+<li><a href="#authorizations">authorizations</a></li>
+<li><a href="#daily_acks">daily_acks</a></li>
+<li><a href="#jobs">jobs</a></li>
+<li><a href="#job_verifications">job_verifications</a></li>
+<li><a href="#artifacts">artifacts</a></li>
+<li><a href="#events">events</a></li>
+<li><a href="#_1">首版没有的表</a></li>
+</ul>
+</div>
+
+</div>
+
+<p>16 张业务表 + 1 张元信息表（schema v5）。全部定义见 <code>backend/app/schema.sql</code>。</p>
+<blockquote>
+<p>本文只覆盖<strong>工作区</strong>这一半。日常区那 6 张 <code>daily_*</code> 表（v4）由另一条工作线引入，
+字段语义见 <code>backend/app/services/daily.py</code> 与 <code>backend/app/api/routes_daily.py</code>，
+本文尚未补齐——这是文档缺口，不是没有这些表。</p>
+</blockquote>
+<h2 id="meta">meta</h2>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key / value / updated_at</td>
+<td>目前只存 <code>schema_version</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="projects">projects</h2>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td><code>prj_&lt;hex&gt;</code></td>
+</tr>
+<tr>
+<td>name</td>
+<td>唯一，同时是目录名（白名单：字母数字 <code>._-</code>，长度 1-63）</td>
+</tr>
+<tr>
+<td>work_root</td>
+<td>绝对路径，创建时落在 <code>AEVORA_PROJECTS_DIR</code> 内并已通过 realpath 校验</td>
+</tr>
+<tr>
+<td>goal / current_summary</td>
+<td>目标与当前概述（概述只属于工作区，不与日常区混写）</td>
+</tr>
+<tr>
+<td>status</td>
+<td><code>active</code> / <code>archived</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>work_root</code> 与 <code>name</code> 都加了唯一约束：同一目录不会被两个项目引用。</p>
+<h2 id="tasks">tasks</h2>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>phase</td>
+<td>见下方状态机</td>
+</tr>
+<tr>
+<td>current_proposal_id</td>
+<td>当前生效的提案版本；换版时更新</td>
+</tr>
+<tr>
+<td>goal / done_criteria</td>
+<td>任务目标与完成条件</td>
+</tr>
+</tbody>
+</table>
+<p>状态机：</p>
+<pre><code>discussion ──提交提案──▶ proposal ──确认提案──▶ authorized
+                                                  │
+                            Worker 领取 ──▶ executing
+                                                  │
+                  ┌───────────────────────────────┼──────────────┐
+                  ▼                               ▼              ▼
+          awaiting_review                      failed    needs_verification
+                  │
+             用户验收 ──▶ accepted
+
+任意阶段 ──取消──▶ cancelled
+</code></pre>
+<p><strong><code>discussion</code> 阶段不可能存在作业</strong>：创建作业只有一条代码路径
+（<code>proposals.confirm_proposal</code>），它要求任务已有当前提案。</p>
+<h2 id="messages">messages</h2>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>role</td>
+<td><code>user</code> / <code>assistant</code> / <code>system</code>。<strong>表允许三种，公共 API 只写 <code>user</code></strong>：<code>assistant</code> / <code>system</code> 只能由服务端内部写入（见 04 文档「消息角色」）</td>
+</tr>
+<tr>
+<td>daily_ack_auth</td>
+<td>若这条消息正是当天「每日首次确认」的落点，记录当时所用授权行 id；其余为 NULL</td>
+</tr>
+</tbody>
+</table>
+<h2 id="proposals">proposals</h2>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>version</td>
+<td>每任务内自增，唯一约束 <code>(task_id, version)</code></td>
+</tr>
+<tr>
+<td>capabilities</td>
+<td>JSON 数组，必须是 <code>capabilities.py</code> 里登记过的名字</td>
+</tr>
+<tr>
+<td>project_root</td>
+<td>提交时的项目目录快照（授权绑定这个值）</td>
+</tr>
+<tr>
+<td>digest</td>
+<td>规范化摘要（键排序 + 紧凑 JSON 的 sha256）</td>
+</tr>
+<tr>
+<td>status</td>
+<td><code>pending</code> / <code>confirmed</code> / <code>superseded</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>digest</code> 覆盖版本、目标、范围、能力清单、完成条件、风险说明、项目目录。
+内容任何实质变化 → 新版本 → 新摘要。</p>
+<h2 id="authorizations">authorizations</h2>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kind</td>
+<td><code>proposal_confirm</code>（点按钮执行）/ <code>default_consent</code>（勾选默认同意）</td>
+</tr>
+<tr>
+<td>proposal_version / proposal_digest</td>
+<td>授权锚定的版本与内容指纹</td>
+</tr>
+<tr>
+<td>project_root / capabilities</td>
+<td>授权范围</td>
+</tr>
+<tr>
+<td>source</td>
+<td><code>ui_button</code> / <code>ui_checkbox</code> / <code>api</code> —— 记录来源便于审计</td>
+</tr>
+<tr>
+<td>invalidated_at / invalidated_reason</td>
+<td>非空即失效</td>
+</tr>
+</tbody>
+</table>
+<p>失效原因目前有：<code>proposal_superseded_by_v&lt;N&gt;</code>、<code>superseded_by_new_consent</code>、<code>manual_revoke</code>。</p>
+<blockquote>
+<p>⚠️ 曾经的 <code>last_daily_prompt_on</code> 列已删除（schema v2）。每日确认是<strong>系统级</strong>状态，
+不该挂在任务级授权行上，否则同一天不同任务会各弹一次。现在见 <code>daily_acks</code>。</p>
+</blockquote>
+<h2 id="daily_acks">daily_acks</h2>
+<p><strong>每日确认的全局状态。整个 Aevora 每个自然日最多一行。</strong></p>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>day</td>
+<td><strong>主键</strong>，<code>YYYY-MM-DD</code>（所有者时区）。主键即去重手段，一天插第二次是 no-op</td>
+</tr>
+<tr>
+<td>authorization_id</td>
+<td>触发这次确认的默认同意（审计用，可空——授权可能之后被撤销）</td>
+</tr>
+<tr>
+<td>task_id / project_id</td>
+<td>当次确认发生在哪个任务/项目（审计用，不参与判定）</td>
+</tr>
+<tr>
+<td>source</td>
+<td><code>ui_dialog</code></td>
+</tr>
+<tr>
+<td>confirmed_by / confirmed_at</td>
+<td>谁在什么时候确认的</td>
+</tr>
+</tbody>
+</table>
+<p>为什么独立成表：授权是<strong>任务级</strong>对象，「今天是否已确认」是<strong>系统级</strong>状态，
+两者生命周期完全不同。混在一起 → 一天被问多次；也便于将来做「今天确认过就不打扰」的跨项目记忆。</p>
+<h2 id="jobs">jobs</h2>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>idempotency_key</td>
+<td>唯一。值为 <code>&lt;proposal_id&gt;:&lt;digest&gt;</code>，同一提案不会重复入队</td>
+</tr>
+<tr>
+<td>status</td>
+<td><code>queued</code> / <code>leased</code> / <code>running</code> / <code>succeeded</code> / <code>failed</code> / <code>cancelled</code> / <code>needs_verification</code> / <code>not_implemented</code></td>
+</tr>
+<tr>
+<td>attempt / max_attempts</td>
+<td>领取次数与上限</td>
+</tr>
+<tr>
+<td>lease_owner / lease_until / heartbeat_at</td>
+<td>租约。过期 → <code>needs_verification</code>，<strong>不自动重排</strong></td>
+</tr>
+<tr>
+<td>recovery_point</td>
+<td>JSON，执行器上报的恢复点（首版只有 <code>stage</code> / <code>executed</code>）</td>
+</tr>
+<tr>
+<td>cancel_requested</td>
+<td>0/1。<code>queued</code> 状态取消可直接落 <code>cancelled</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>not_implemented</code> 是首版的正常终态：执行器没接，作业必须如实标记，
+不能伪装成 <code>succeeded</code> 或 <code>failed</code>。</p>
+<h2 id="job_verifications">job_verifications</h2>
+<p><strong>v5 新增。<code>needs_verification</code> 的出口——没有它，这个状态就是死胡同。</strong></p>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>job_id</td>
+<td>归属作业。<strong>没有 UNIQUE</strong>：同一作业可以有多条（改判）</td>
+</tr>
+<tr>
+<td>from_status</td>
+<td>核实前的状态：<code>needs_verification</code>，或上一轮核实产生的终态</td>
+</tr>
+<tr>
+<td>to_status</td>
+<td><code>succeeded</code> / <code>failed</code> / <code>cancelled</code>，由 verdict 决定，不接受自由文本</td>
+</tr>
+<tr>
+<td>verdict</td>
+<td><code>ok</code> / <code>not_ok</code> / <code>void</code></td>
+</tr>
+<tr>
+<td>verifier</td>
+<td><strong>恒 <code>local-unverified</code></strong>。没有身份校验就写 <code>owner</code>，等于把结论提前写进事实字段</td>
+</tr>
+<tr>
+<td>note</td>
+<td>人的结论。DB 层 <code>CHECK (length(trim(note)) &gt;= 4)</code>——空备注的核实记录等于没有记录</td>
+</tr>
+<tr>
+<td>evidence</td>
+<td>JSON 数组，至少一项：产物 id / rel_path / 输出摘要</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>UTC ISO-8601</td>
+</tr>
+</tbody>
+</table>
+<p>三条不变量：</p>
+<ol>
+<li><strong>只增不改</strong>：没有 UPDATE / DELETE 的代码路径，接口也只有 POST 与 GET；</li>
+<li><strong><code>jobs.status</code> 永远等于最新一条</strong>（按 <code>created_at, rowid</code> 取最后一条）；</li>
+<li><strong><code>result_summary</code> 不被核实覆盖</strong>：那是执行器对"发生了什么"的原始陈述，
+   核实者的结论只进 <code>note</code>，两者混写之后就分不清哪句是跑出来的。</li>
+</ol>
+<p>改判次数 = 记录数 − 1（首条是结案，不是改判）。</p>
+<h2 id="artifacts">artifacts</h2>
+<p><strong>v3 新增。文件本体不在库里，只登记元数据。</strong></p>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>project_id</td>
+<td>必填，归属项目</td>
+</tr>
+<tr>
+<td>task_id</td>
+<td>可空。空 = 项目级文件（落在 <code>_unassigned/</code> 下）</td>
+</tr>
+<tr>
+<td>job_id</td>
+<td>可空。<strong>当前恒为空</strong>：执行器未接入，没有作业产物；字段为将来预留</td>
+</tr>
+<tr>
+<td>filename</td>
+<td>展示用文件名，已过 <code>security.sanitize_filename</code> 白名单</td>
+</tr>
+<tr>
+<td>rel_path</td>
+<td><strong>项目内相对路径</strong>：相对 <code>&lt;产物根&gt;/&lt;项目名&gt;/</code>，POSIX 分隔符</td>
+</tr>
+<tr>
+<td>content_type</td>
+<td>只保留 <code>type/subtype</code>，参数（charset 等）丢弃；不合法则 <code>application/octet-stream</code></td>
+</tr>
+<tr>
+<td>kind</td>
+<td><code>upload</code>（当前唯一写入路径）/ <code>job_output</code>（预留，暂无写入方）</td>
+</tr>
+<tr>
+<td>size_bytes</td>
+<td>实际写入字节数（不是 Content-Length）</td>
+</tr>
+<tr>
+<td>sha256</td>
+<td>写盘时边写边算，与文件内容一致</td>
+</tr>
+<tr>
+<td>storage_path</td>
+<td>服务端绝对路径。<strong>任何接口都不返回</strong>，只用于自己拼盘 + 下载前校验</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>UTC ISO-8601</td>
+</tr>
+</tbody>
+</table>
+<p>落盘形状：</p>
+<pre><code>&lt;AEVORA_ARTIFACTS_DIR&gt;/&lt;项目名&gt;/&lt;task_id 或 _unassigned&gt;/&lt;YYYY&gt;/&lt;MM&gt;/&lt;DD&gt;/&lt;产物 id&gt;__&lt;文件名&gt;
+</code></pre>
+<p>四条约束：</p>
+<ol>
+<li><strong>路径由服务端生成</strong>。客户端只给文件名，给不了目录、也给不了绝对路径；
+   名字里带 <code>/</code>、<code>\</code>、控制字符、或是 <code>.</code> / <code>..</code> 一律 422。</li>
+<li><strong>先写文件、后写库</strong>。写库失败就删文件；写文件中途失败就删 <code>.part</code> 临时文件。
+   顺序反了会留下"库里说有、磁盘上没有"的记录。</li>
+<li><strong>下载时再校验一次</strong> <code>storage_path</code>。库被手改成 <code>/etc/passwd</code> 也只是 403，
+   不会真的把系统文件发出去。</li>
+<li>物理位置与项目工作目录（<code>projects/&lt;name&gt;</code>）<strong>分开</strong>：工作目录将来是执行器的
+   读写区，产物混进去会被误当成"待处理输入"。</li>
+</ol>
+<h2 id="events">events</h2>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>seq</td>
+<td><code>INTEGER PRIMARY KEY AUTOINCREMENT</code>，单调且不复用</td>
+</tr>
+<tr>
+<td>type</td>
+<td>白名单，见 <code>app/events.py::EventType</code></td>
+</tr>
+<tr>
+<td>payload</td>
+<td>JSON，<code>sort_keys=True</code> 便于比较</td>
+</tr>
+<tr>
+<td>project_id / task_id</td>
+<td>可为空（全局事件）；<strong>不设外键</strong>，审计记录不随业务对象删除而消失</td>
+</tr>
+</tbody>
+</table>
+<p>游标补读：<code>GET /api/events?after=&lt;seq&gt;</code>；实时推送：<code>GET /api/events/stream?after=&lt;seq&gt;</code>。</p>
+<h2 id="_1">首版没有的表</h2>
+<ul>
+<li><code>project_states</code>（独立的项目状态对象）—— 首版用 <code>projects.current_summary</code> 承载</li>
+<li>用户 / 会话 / 设备表 —— 首版单所有者，无鉴权</li>
+</ul>
+
+<footer>
+  自用分享 · 不承诺维护 · AS IS · MIT<br>
+  本页由 <code>02-数据模型.md</code> 生成，内容以该文件为准。
+</footer>
+</main>
+</body>
+</html>
