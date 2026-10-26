@@ -9,6 +9,7 @@
     --ink:#1c1c1e; --ink2:#5a5a63; --ink3:#8a8a93;
     --line:#e2e1dc; --bg:#fdfcfa; --card:#ffffff; --soft:#f6f5f1;
     --t1:#534AB7; --t2:#993556; --t3:#0F6E56; --t4:#185FA5; --t0:#5F5E5A;
+    --t5:#8A5A1B; --t6:#3F6B8A;
   }
   *{box-sizing:border-box}
   body{margin:0;padding:44px 28px 72px;background:var(--bg);color:var(--ink);
@@ -39,6 +40,15 @@
   .s3 .box{border-top-color:var(--t3)} .s3 b{color:var(--t3)}
   .s4 .box{border-top-color:var(--t4)} .s4 b{color:var(--t4)}
 
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0 6px}
+  .pbox{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 16px;border-left:3px solid var(--line)}
+  .pbox h4{margin:0 0 4px;font-size:14px;font-weight:600}
+  .pbox .tag{display:block;font-size:11.5px;color:var(--ink3);font-family:ui-monospace,monospace;margin-bottom:8px}
+  .pbox p{margin:0 0 6px;font-size:12.5px;line-height:1.55;color:var(--ink2)}
+  .pbox p:last-child{margin-bottom:0}
+  .p5{border-left-color:var(--t5)} .p5 h4{color:var(--t5)}
+  .p6{border-left-color:var(--t6)} .p6 h4{color:var(--t6)}
+
   .flow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin:16px 0}
   .row{display:flex;align-items:flex-start;gap:14px;padding:11px 0;border-bottom:1px dashed var(--line)}
   .row:last-child{border-bottom:none;padding-bottom:0}
@@ -64,11 +74,13 @@
   .note b{font-weight:600}
   .warn{border-left-color:#BA7517;background:#fdf8ee}
   .ok{border-left-color:var(--t3);background:#f2f9f6}
+  .bad{border-left-color:#A32A2A;background:#fbf1f1}
   .foot{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:12px}
   @media (max-width:820px){
     .chain{grid-template-columns:1fr;gap:26px}
     .step:not(:last-child)::after{content:"↓";right:auto;left:50%;top:auto;bottom:-22px;
       transform:translateX(-50%)}
+    .pair{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -76,10 +88,10 @@
 <div class="wrap">
 
 <h1>Aevora 日常区 · 记忆库架构</h1>
-<div class="sub">只读检查结果：四层记忆（T1–T4）+ 一层不可变原文（T0）</div>
-<div class="meta">backend · schema 表 43 张，日常区 40 张 · 2026-10-26</div>
+<div class="sub">只读检查结果：四层记忆（T1–T4）+ 一层不可变原文（T0）+ 两份人格档案（欲望账本 / 日记信）</div>
+<div class="meta">backend @ b3d4807 · schema v15 · 表 53 张，日常区 42 张 · 2026-10-26</div>
 
-<h2><span class="n">一</span>写入链：四层各自怎么长出来</h2>
+<h2><span class="n">一</span>写入链：每一层各自怎么长出来</h2>
 <p class="lead">不是一条链走到底，而是每一层有各自的触发方式和来源。越往下越抽象、条数越少、越接近“我是谁”。</p>
 
 <div class="chain">
@@ -113,7 +125,24 @@
   </div></div>
 </div>
 
-<div class="flow">
+<div class="lead" style="margin:26px 0 10px">v15 新增的旁支：T1 落库之后会顺手长出的两份东西。它们不属于四层，但都挂在同一个人格下。</div>
+
+<div class="pair">
+  <div class="pbox p5">
+    <h4>欲望账本</h4><span class="tag">daily_persona_desires + _events</span>
+    <p>T1 归档成功后，用 <b>assistant_primary</b> 角色跑一次自我回顾，把「我明确表达过的愿望」写进账本。</p>
+    <p>两种：<code>project</code>（有限期，做完就结）与 <code>ongoing</code>（开放式，长期在）。状态四档：active / paused / completed / released。</p>
+    <p>每个操作必须引用<b>本批 T1 的 ID</b>，对不上直接丢。沉默不算完成，也不等于放下。</p>
+  </div>
+  <div class="pbox p6">
+    <h4>日记信</h4><span class="tag">daily_persona_journals + _events</span>
+    <p>同一批 T1 还会生成一封「给明天自己的信」，第一人称，不是对用户的回复。</p>
+    <p>每天一封（<code>UNIQUE(persona_id, local_day)</code>）。下一次人格「睁眼」时投递一次，投递即冻结——<b>读过的信不能改</b>。</p>
+    <p>来源必须全部是本批 T1，且属于当前人格，否则拒写。</p>
+  </div>
+</div>
+
+<div class="flow" style="margin-top:22px">
   <div class="row"><div class="num">1</div><div class="body">
     <b>T1 是三段管线，不是一次总结。</b>批次先<code>冻结</code>（同一 <code>source_digest</code> 唯一，重跑不重复），再依次走 router → curator → writer，每阶段结果都落在批次表里，中途崩了可以从断点续。产出直接就是「一条记忆 = 一次事件」，不是一轮对话一条。
   </div></div>
@@ -121,13 +150,19 @@
     <b>T2 不接受“凭印象写”。</b>写卡时若带 <code>memory_sources</code>，其中每个原文编号必须出现在本轮的读取授权集合里，否则直接拒绝：<code>心语卡片只能引用本轮已经读取的原始消息</code>。想写卡，得先真的把原文读出来。
   </div></div>
   <div class="row"><div class="num">3</div><div class="body">
-    <b>T2 允许先建后挂。</b>不带 <code>memory_sources</code> 时可以建一张“未挂靠”卡，来源指向当前用户原话；之后由 <code>attach_emotion_card</code> 挂到 T1 上，链接字段记 <code>live_dialogue</code>（对话中挂）或 <code>daily_archive</code>（归档时挂）。
+    <b>T2 允许先建后挂。</b>不带 <code>memory_sources</code> 时可以建一张“未挂靠”卡，来源指向当前用户原话；之后由 <code>attach_emotion_card</code> 挂到 T1 上，链接字段记 <code>live_dialogue</code>（对话中挂）或 <code>daily_archive</code>（归档时挂）。挂载时记忆与卡片<b>必须同属一个</b> <code>persona_id</code>，且一张卡不能跨记忆复用。
   </div></div>
   <div class="row"><div class="num">4</div><div class="body">
     <b>T3 的门槛写在数据库里，不写在提示词里。</b>把一条 T3 置为 <code>current</code> 时，触发器会数它的 T2 来源，少于 2 条直接 <code>RAISE(ABORT)</code>。也就是说“只凭一件事就总结出自我认知”在结构上不可能。
   </div></div>
   <div class="row"><div class="num">5</div><div class="body">
     <b>T4 是唯一会“常驻”的一层。</b><code>residency_state</code> 三态决定它进不进每轮上下文；<code>review_if_due</code> 在每轮对话开始前用 <code>assistant_primary</code> 角色评估一次，决定谁升为常驻、谁退回待复核。
+  </div></div>
+  <div class="row"><div class="num">6</div><div class="body">
+    <b>v15 起，删 T1 前要先问 T4 答不答应。</b>删除预检会沿 <code>T4 → T3 → T2 → T1</code> 走一遍，如果这条 T1 是某条未删除 T4 的<b>唯一</b>支撑来源，删除被拒绝。保护只认本人格的支持链——每一跳 JOIN 都带 <code>persona_id</code> 等值条件。
+  </div></div>
+  <div class="row"><div class="num">7</div><div class="body">
+    <b>世界书从“整段注入”改成分节常驻。</b><code>ai_persona_sections</code> 与 <code>user_persona_sections</code> 各带一份 <code>resident</code> 开关：开着的分节编译进 system prompt，关掉的<b>不会自动注入、也不会自动召回</b>，只能由模型调 <code>list_worldbook_sections</code> / <code>read_worldbook_section</code> 主动读（单次 ≤5000 字符）。
   </div></div>
 </div>
 
@@ -137,25 +172,46 @@
 <div class="flow">
   <div class="row"><div class="num">A</div><div class="body">
     <b>先装常驻 T4</b>（无条件，不看语义相关度）<br>
-    <code>residency_state='resident'</code> 的全部条目，上限 <code>3 条</code> / <code>1800 字符</code> / 单条 <code>600 字符</code>，按创建时间排序，超了就截断单条正文，装不下就停。
+    <code>residency_state='resident'</code> 的全部条目，上限 <code>3 条</code> / <code>1800 字符</code> / 单条 <code>600 字符</code>，按创建时间排序，超了就截断单条正文，装不下就停。取数条件是 <code>persona_id=?</code>，标题也明写「当前人格的常驻 T4」。
     <div class="branch">预算独立，注释写得很明确：<code>no emotion-card reads or T1/T3 budget use</code>。常驻层不吃召回的额度，召回也不会把常驻层挤掉。</div>
   </div></div>
   <div class="row"><div class="num">B</div><div class="body">
     <b>再算自动召回</b><br>
     候选池 = T1 活跃 + T3 活跃 + T4 非常驻，最多 <code>20 条</code> → 路由先判“这一轮要不要召回”（不用就别花后面那几步）→ 打分 <code>0.7 × 向量 + 0.3 × 词法</code> → rerank → 卡阈值 <code>0.65</code> → 只取前 <code>2 条</code>。
-    <div class="branch">同一条记忆有 <code>24 小时冷却</code>，同一轮有 <code>15 分钟预留</code>。这两道是防“同一件事连着几天被反复注入”，也是为什么召回条数敢定得这么低。</div>
+    <div class="branch">同一条记忆有 <code>24 小时冷却</code>，同一轮有 <code>15 分钟预留</code>。这两道是防“同一件事连着几天被反复注入”，也是为什么召回条数敢定得这么低。三类候选、向量缓存全部按 <code>persona_id</code> 取。</div>
   </div></div>
   <div class="row"><div class="num">C</div><div class="body">
     <b>拼进 system，顺序固定</b><br>
-    角色设定 → 用户资料 → 对话规则 → 常驻 T4 + 召回结果。拼完进工具循环：最多 <code>4 轮</code> / <code>8 次工具调用</code>，共 <code>19 个</code>记忆工具。
+    角色设定（仅常驻分节）→ 用户资料（仅常驻分节）→ 对话规则 → 常驻 T4 + 召回结果 → 待投递日记（若有）。拼完进工具循环：最多 <code>4 轮</code> / <code>8 次工具调用</code>，共 <code>22 个</code>记忆工具，T0 原文读取单轮累计 <code>24000 字符</code>。
   </div></div>
   <div class="row"><div class="num">D</div><div class="body">
     <b>整条召回链是可失败的</b><br>
-    <code>prepare()</code> 外面包着 try/except，任何一步出错都只记事件、返回空上下文，聊天照常。注释：<code>任意召回故障不阻断聊天</code>。
+    <code>prepare()</code> 外面包着 try/except，任何一步出错都只记事件、返回空上下文，聊天照常。注释：<code>任意召回故障不阻断聊天</code>。日记预留、T4 复核也是同样的隔离方式。
   </div></div>
 </div>
 
-<h2><span class="n">三</span>四层对照</h2>
+<h2><span class="n">三</span>人格边界：一个人格能看到谁的记忆</h2>
+<p class="lead">这一层决定「一个人格能不能碰到别人的记忆」。做法是把人格归属做成数据层的硬约束，而不是靠提示词提醒模型自觉。</p>
+
+<div class="note ok">
+<b>已做的：数据层与写入链全部按 <code>persona_id</code> 收口。</b><br>
+42 张日常区表里 <b>36 张带 <code>persona_id</code></b>（NOT NULL + 外键），剩下 6 张（会话、轮次、原文、消息、事件、人格表本身）靠会话间接归属。<br><br>
+跨对象关联每一处都有双向校验：卡挂记忆要两边同人格、T4 链 T3 要 T3 同人格、T3 引 T1 要来源同人格、日记的 <code>source_memory_ids</code> 逐条核对归属。v15 的两张新表更狠——用<b>复合外键</b> <code>(id, persona_id)</code>，数据库层面就挡住了跨人格引用。<br><br>
+实测库里 9 类跨人格引用（卡片↔记忆、T4↔T3、T3↔T1、T1↔来源、Track↔记忆、批次↔会话、欲望事件↔欲望、日记事件↔日记、卡片来源）<b>全部为 0</b>。
+</div>
+
+<div class="note">
+<b>人格标签从哪来：会话，而且是唯一的来源。</b><br>
+归档批次的 <code>persona_id</code> 从会话读出，不由调用方随意指定；<code>_verify_frozen_sources</code> 再逐条复核每条原文所属会话的人格，不符直接抛错。欲望与日记的来源又限定在本批 T1 之内，跨不出这批。<br><br>
+换句话说，「这次整理属于哪个人格」在建会话那一刻就定了，后面每一层只是沿用它、核对它。这是把归属做成<b>结构</b>而不是<b>约定</b>的关键——模型说什么都不改变标签，标签由数据自己带着走。
+</div>
+
+<div class="note ok">
+<b>对话里的取用也按人格分流。</b><br>
+工具层每个分支都先过 <code>_tool_memory(persona_id, …)</code> 或显式比对 <code>persona["persona_id"] != persona_id</code>；召回候选、向量缓存、常驻 T4、世界书分节、唤醒摘要，全部带人格条件。模型自己调工具，拿到的只会是当前人格的东西。
+</div>
+
+<h2><span class="n">四</span>五层对照</h2>
 
 <table>
   <thead><tr>
@@ -166,10 +222,12 @@
     <tr><td><b>T2</b></td><td>那一刻心里什么样</td><td><b>主对话模型</b></td><td>对话中模型主动调工具</td><td><code>daily_emotion_cards</code> + <code>_revisions</code> + <code>_sources</code> + <code>_memory_emotion_cards</code></td></tr>
     <tr><td><b>T3</b></td><td>我因此变成什么样的人</td><td>周度任务</td><td>每周日定时</td><td><code>daily_self_awareness</code> + <code>_revisions</code> + <code>_t2_sources</code> + <code>_weekly_*</code></td></tr>
     <tr><td><b>T4</b></td><td>我是谁（稳定内核）</td><td>主对话模型</td><td>对话中保存 + 每轮前复核</td><td><code>daily_core_memories</code> + <code>_revisions</code> + <code>_t3_links</code> + <code>_residency_state</code></td></tr>
+    <tr><td><b>欲望账本</b></td><td>我还想要什么</td><td>整理后的自我回顾模型</td><td>T1 归档成功后自动</td><td><code>daily_persona_desires</code> + <code>_desire_events</code></td></tr>
+    <tr><td><b>日记信</b></td><td>昨天想对今天说什么</td><td>同上</td><td>T1 归档后生成，次日投递</td><td><code>daily_persona_journals</code> + <code>_journal_events</code></td></tr>
   </tbody>
 </table>
 
-<h2><span class="n">四</span>关键数字</h2>
+<h2><span class="n">五</span>关键数字</h2>
 
 <table>
   <thead><tr><th>参数</th><th>值</th><th>管什么</th></tr></thead>
@@ -182,31 +240,40 @@
     <tr><td>常驻 T4</td><td class="num-col">3 条 / 1800 字 / 单条 600 字</td><td>常驻层独立预算</td></tr>
     <tr><td>T1 批次</td><td class="num-col">30 轮 / 30000 字符 / 租约 180s</td><td>一次提炼的取数范围</td></tr>
     <tr><td>T3 周度</td><td class="num-col">≤3 次尝试 / 租约 10 分钟</td><td>失败重试上限</td></tr>
-    <tr><td>工具循环</td><td class="num-col">4 轮 / 8 次调用</td><td>单轮对话里模型能调几次工具</td></tr>
+    <tr><td>工具循环</td><td class="num-col">4 轮 / 8 次调用 / 22 个工具</td><td>单轮对话里模型能调几次工具</td></tr>
+    <tr><td>T0 原文预算</td><td class="num-col">24000 字符 / 轮</td><td>同一轮所有读取共用</td></tr>
+    <tr><td>T3 / T4 读取</td><td class="num-col">10000 / 5000 字符</td><td>单轮读取上限</td></tr>
+    <tr><td>世界书分节</td><td class="num-col">单次 5000 字符</td><td>非常驻分节按需读取</td></tr>
+    <tr><td>日记</td><td class="num-col">8000 字符 / 每日 1 封</td><td>投递后不可改</td></tr>
+    <tr><td>欲望唤醒摘要</td><td class="num-col">5 条（上限 10）</td><td>项目类常驻，开放式按 3 天冷却轮换</td></tr>
   </tbody>
 </table>
 
-<h2><span class="n">五</span>三个值得单独知道的约束</h2>
+<h2><span class="n">六</span>四个值得单独知道的约束</h2>
 
 <div class="note ok">
 <b>一、情绪卡不是“只能当场写”，是“引用必须有据”。</b>
 <code>daily_emotion_card_revisions.writer_role</code> 上那条 <code>CHECK (writer_role = 'assistant_primary')</code> 只圈定这一列能取哪些字面值，<strong>并不校验调用者是谁</strong>——T1 的 <code>writer_role</code> 锁成 <code>'memory_processing'</code> 是同一个性质：<b>都是标签，不是权限</b>。真正的闸门在工具层——<code>read_grants</code> 要求卡里每条 <code>source_refs</code> 都落在“本轮读过的消息”集合里，否则报“心语卡片只能引用本轮已经读取的原始消息”。它锁的是<strong>引用能不能对上原文</strong>，不是<strong>写的时刻</strong>。
-<br><br>而且归档侧的路本来就留着：<code>daily_memory_emotion_cards.link_source</code> 的 CHECK 允许 <code>'live_dialogue'</code> 与 <code>'daily_archive'</code>；<code>attach_emotion_card()</code> 的 <code>link_source</code> 默认值直接就是 <code>'daily_archive'</code>，还配了一条 REST 入口 <code>POST …/memories/{memory_id}/emotion-cards/{card_id}</code>；另有一张“未挂靠卡片”待办队列，超过 24 小时标 <code>overdue</code>。也就是说“先留卡、事后挂回某条记忆”这条链，今天的代码就是通的。
-<br><br>缺的是另一半：<strong>创建</strong>卡片的 <code>create_emotion_card()</code> 没有 REST 入口，只有对话工具那一条路（写死 <code>link_source="live_dialogue"</code>），而服务层本身接受 <code>daily_archive</code>。所以想让凌晨那批模型写卡，<strong>不用改 schema，是给它接一个入口</strong>、调用时传 <code>daily_archive</code>。唯一真要动 schema 的是标签诚实度——想让这批卡在库里明确标成“离线补写”，得放宽 <code>writer_role</code> 的枚举；那是元数据，不影响能不能写。
+<br><br>而且归档侧的路本来就留着：<code>daily_memory_emotion_cards.link_source</code> 的 CHECK 允许 <code>'live_dialogue'</code> 与 <code>'daily_archive'</code>；<code>attach_emotion_card()</code> 的 <code>link_source</code> 默认值直接就是 <code>'daily_archive'</code>，还配了一条 REST 入口。缺的只是<strong>创建</strong>卡片那一侧的入口。
 </div>
 
 <div class="note">
 <b>二、T4 到 T1 没有直接连线。</b>
-T4 只链 T3（<code>daily_core_memory_t3_links</code>），T3 又只用 T2 的 <code>memory_id</code> 做锚，解析时才去读当前 T1 版本和最新有效卡。所以任何一次回溯都是：T4 → T3 → T2 → T1 → T0，四跳。好处是任何一层改版都不会断链，代价是想查“这条核心记忆到底基于哪句原话”要跳四次。
+T4 只链 T3（<code>daily_core_memory_t3_links</code>），T3 又只用 T2 的 <code>memory_id</code> 做锚，解析时才去读当前 T1 版本和最新有效卡。所以任何一次回溯都是：T4 → T3 → T2 → T1 → T0，四跳。好处是任何一层改版都不会断链，代价是想查“这条核心记忆到底基于哪句原话”要跳四次——v15 的删除保护正是沿这条四跳链走的。
 </div>
 
 <div class="note warn">
-<b>三、召回只取 2 条，而且是四层共抢。</b>
+<b>三、召回只取 2 条，而且是三层共抢。</b>
 T1、T3、非常驻 T4 都在同一个候选池里，按分数排，不按层级分配名额。也就是说一条被召回的核心记忆，可能挤掉一条更贴题的 T1。这在“层数少、条数少”的时候没问题，但 T4 攒到十几条之后需要留意——它可能会长期占住那两个名额。
 </div>
 
+<div class="note">
+<b>四、每次 T1 归档都会多跑一次主模型。</b>
+归档成功后自动执行「自我回顾」：一次 <code>assistant_primary</code> 调用，同时产出欲望账本变更和日记信。它失败只记事件、不影响 T1 已保存的结果（<code>persona_wake: failed</code>），但它确实让每次归档多了一次模型成本，而且用的是<b>对话模型</b>而不是便宜的 <code>memory_processing</code>。
+</div>
+
 <div class="foot">
-只读检查：未修改任何文件，未启动服务，未读取库内数据内容。所有结论来自该项目 backend 的 schema 与 services 代码。
+只读检查：未修改任何文件，未启动服务，未写入库内数据（数据库以 <code>mode=ro</code> 打开）。所有结论来自该项目 backend 的 schema 与 services 代码。
 </div>
 
 </div>
