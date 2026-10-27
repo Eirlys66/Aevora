@@ -88,7 +88,7 @@
 
 <h1>Aevora 日常区 · 记忆库架构</h1>
 <div class="sub">四层记忆（T1–T4）+ 一层不可变原文（T0）+ 两份人格档案（欲望账本 / 日记信）+ 日级自动整理 + 按人格授权的外部工具</div>
-<div class="meta">backend @ fcc0ac7 · schema v16 · 表 54 张，日常区 44 张 · 2026-10-27</div>
+<div class="meta">backend @ 3445f3c · schema v16 · 表 54 张，日常区 44 张 · 2026-10-27</div>
 
 <h2><span class="n">一</span>写入链：每一层各自怎么长出来</h2>
 <p class="lead">不是一条链走到底，而是每一层有各自的触发方式和来源。越往下越抽象、条数越少、越接近“我是谁”。</p>
@@ -118,9 +118,9 @@
   </div></div>
   <div class="step s4"><div class="box">
     <b>T4 核心记忆</b><span class="tag">core_memory</span>
-    <p>对话中保存 + 每轮前复核。</p>
-    <p>三态：常驻 / 待复核 / 非常驻。</p>
-    <p>只链 T3，不直接链 T1。</p>
+    <p>对话中保存；每轮先查待复核（不调模型）。</p>
+    <p>攒够 3 条等位或撞硬线 6 条，才真评一次。</p>
+    <p>三态：常驻 / 待复核 / 非常驻。只链 T3。</p>
   </div></div>
 </div>
 
@@ -233,7 +233,7 @@
   </div></div>
   <div class="row"><div class="num">B</div><div class="body">
     <b>再算自动召回</b><br>
-    候选池 = T1 活跃 + T3 活跃 + T4 非常驻，最多 <code>20 条</code> → 路由先判“这一轮要不要召回”（不用就别花后面那几步）→ 打分 <code>0.7 × 向量 + 0.3 × 词法</code> → rerank → 卡阈值 <code>0.65</code> → 只取前 <code>2 条</code>。
+    候选池 = T1 活跃 + T3 活跃 + T4 非常驻，最多 <code>20 条</code> → 路由先判“这一轮要不要召回”（不用就别花后面那几步）→ 打分 <code>0.7 × 向量 + 0.3 × 词法</code> → rerank → 卡阈值 <code>T1/T4 0.65、T3 0.75</code> → 按层取名额：T1 占 2 条，T3 与非常驻 T4 共抢 1 条。
     <div class="branch">同一条记忆有 <code>24 小时冷却</code>，同一轮有 <code>15 分钟预留</code>。这两道是防“同一件事连着几天被反复注入”，也是为什么召回条数敢定得这么低。三类候选、向量缓存全部按 <code>persona_id</code> 取。</div>
   </div></div>
   <div class="row"><div class="num">C</div><div class="body">
@@ -320,7 +320,7 @@
     <tr><td><b>T1</b></td><td>发生过什么</td><td>记忆处理模型</td><td>手动接口 / 日级自动 / 断点续做</td><td><code>daily_memories</code> + <code>_revisions</code> + <code>_sources</code> + <code>_tracks</code></td></tr>
     <tr><td><b>T2</b></td><td>那一刻心里什么样</td><td><b>主对话模型</b></td><td>对话中模型主动调工具</td><td><code>daily_emotion_cards</code> + <code>_revisions</code> + <code>_sources</code> + <code>_memory_emotion_cards</code></td></tr>
     <tr><td><b>T3</b></td><td>我因此变成什么样的人</td><td>周度任务</td><td>每周日定时</td><td><code>daily_self_awareness</code> + <code>_revisions</code> + <code>_t2_sources</code> + <code>_weekly_*</code></td></tr>
-    <tr><td><b>T4</b></td><td>我是谁（稳定内核）</td><td>主对话模型</td><td>对话中保存 + 每轮前复核</td><td><code>daily_core_memories</code> + <code>_revisions</code> + <code>_t3_links</code> + <code>_residency_state</code></td></tr>
+    <tr><td><b>T4</b></td><td>我是谁（稳定内核）</td><td>主对话模型</td><td>对话中保存；每轮查待复核，攒够 3 条才评</td><td><code>daily_core_memories</code> + <code>_revisions</code> + <code>_t3_links</code> + <code>_residency_state</code></td></tr>
     <tr><td><b>欲望账本</b></td><td>我还想要什么</td><td>整理后的自我回顾模型</td><td>T1 归档成功后自动</td><td><code>daily_persona_desires</code> + <code>_desire_events</code></td></tr>
     <tr><td><b>日记信</b></td><td>昨天想对今天说什么</td><td>同上</td><td>T1 归档后生成，次日投递</td><td><code>daily_persona_journals</code> + <code>_journal_events</code></td></tr>
     <tr><td><b>日级调度</b></td><td>这一天整理到哪了</td><td>定时任务</td><td>每 30 分钟轮询，3 点后推进</td><td><code>daily_t1_automation_runs</code> + <code>_events</code></td></tr>
@@ -334,8 +334,8 @@
   <thead><tr><th>参数</th><th>值</th><th>管什么</th></tr></thead>
   <tbody>
     <tr><td>候选池上限</td><td class="num-col">20 条</td><td>进入打分的总条目，超出先粗排</td></tr>
-    <tr><td>单轮注入上限</td><td class="num-col">2 条</td><td>召回层最终进 prompt 的条数</td></tr>
-    <tr><td>相关度阈值</td><td class="num-col">0.65</td><td>低于此分一律不注入</td></tr>
+    <tr><td>单轮注入上限</td><td class="num-col">3 条</td><td>T1 占 2 条 + T3/T4 共享 1 条</td></tr>
+    <tr><td>相关度阈值</td><td class="num-col">T1 T4 0.65 / T3 0.75</td><td>低于此分不注入；T3 门槛更高</td></tr>
     <tr><td>冷却 / 预留</td><td class="num-col">24h / 15min</td><td>同一条记忆的重复注入间隔</td></tr>
     <tr><td>召回上下文上限</td><td class="num-col">7000 字符</td><td>召回文本总长</td></tr>
     <tr><td>常驻 T4</td><td class="num-col">3 条 / 1800 字 / 单条 600 字</td><td>常驻层独立预算</td></tr>
@@ -371,13 +371,13 @@ T4 只链 T3（<code>daily_core_memory_t3_links</code>），T3 又只用 T2 的 
 </div>
 
 <div class="note warn">
-<b>三、召回只取 2 条，而且是三层共抢。</b>
-T1、T3、非常驻 T4 都在同一个候选池里，按分数排，不按层级分配名额。也就是说一条被召回的核心记忆，可能挤掉一条更贴题的 T1。这在“层数少、条数少”的时候没问题，T4 攒多之后需要留意。
+<b>三、召回总名额只有 3 条，而且不是三层混抢。</b>
+T1 有专属的 2 个名额，T3 与「非常驻 T4」共享剩下的 1 个——_select_with_tier_quotas 里那句注释写得很直白：one shared T3/T4 slot。所以一条核心记忆挤掉的是同池的 T3，抢不走 T1 的位置。反过来，T3 的准入门槛是 0.75、T4 是 0.65：同样 0.7 分，T4 能进，T3 被拦。名额压得这么紧是有原因的——同一条记忆还有 24 小时冷却，一整天里它能出现的次数本来就被限死了。
 </div>
 
 <div class="note">
-<b>四、每次 T1 归档都会多跑一次主模型。</b>
-归档成功后自动执行「自我回顾」：用 <code>assistant_primary</code> 调用，产出欲望账本变更和日记信。它失败只记事件、不影响 T1 已保存的结果，但它确实让每次归档多了一次模型成本，而且用的是<b>对话模型</b>而不是便宜的 <code>memory_processing</code>。一天记忆多的时候，唤醒还会按 30000 字符分组，那一轮的模型调用次数随组数增长。
+<b>四、自我回顾是「一天一次」，不是「一批一次」。</b>
+归档本身不触发模型。真正入口只有一个 finalize_daily_t1_if_complete()：先看这一天所有已完成的轮次是不是都归档过，还有剩的就返回 pending_sources 直接走人；全齐了才用 assistant_primary（就是对话模型，不是便宜的 memory_processing）跑一次自我回顾，一次产出欲望账本变更和日记信。手动整理接口每批结束后也会调这个函数，但同样只在「当天真整理完」那一刻才真跑。每人每天一条 daily_t1_automation_runs 记录兜着，跑过就是 already_finished。一天 T1 超过 30000 字符才分组：每组一次调用只产素材，多组最后再调一次整合成信——所以成本随「这一天有多少字」涨，不随「归档了几批」涨。
 </div>
 
 <div class="note">
